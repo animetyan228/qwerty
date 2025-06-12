@@ -18,14 +18,15 @@ app = Flask(__name__)
 CORS(app)
 
 model_name = "thebloke/mistral-7b-instruct-v0.2-gptq" # загружаем модель
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # cpu/gpu
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
+
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-).to(device)
+    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+    device_map="auto"
+)
 
 
 def generate_structured_data(text):
@@ -47,13 +48,12 @@ def generate_structured_data(text):
 \"\"\"{text}\"\"\"
 """
 
-    inputs = tokenizer(prompt, return_tensors="pt")  
-    input_ids = inputs["input_ids"].to(device)
-    attention_mask = inputs["attention_mask"].to(device)
+    inputs = tokenizer(prompt, return_tensors="pt")
+    inputs = {k: v.to(device) for k, v in inputs.items()}
 
     outputs = model.generate(
-        input_ids=input_ids,
-        attention_mask=attention_mask,
+        input_ids=inputs["input_ids"],
+        attention_mask=inputs["attention_mask"],
         max_new_tokens=512,
         do_sample=True,
         temperature=0.7,
@@ -70,7 +70,7 @@ def generate_structured_data(text):
     generated_tokens = outputs.sequences[0]
     result = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
-    # ищем JSON в ответе
+    # Ищем JSON в ответе
     json_objects = re.findall(r'{[\s\S]*?}', result)
     for json_candidate in reversed(json_objects):
         try:
@@ -92,7 +92,7 @@ def ocr_pdf_with_pymupdf(pdf_bytes):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     full_text = []
     for page in doc:
-        pix = page.get_pixmap(dpi=300, colorspace=fitz.csRGB)
+        pix = page.get_pixmap(dpi=300, colorspace=fitz.csRGB)  # явный RGB
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         text = pytesseract.image_to_string(img, lang='rus')
         full_text.append(text)
