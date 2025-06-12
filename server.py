@@ -47,7 +47,7 @@ def generate_structured_data(text):
 \"\"\"{text}\"\"\"
 """
 
-    inputs = tokenizer(prompt, return_tensors="pt")  # без truncation - попробуй так
+    inputs = tokenizer(prompt, return_tensors="pt")  
     input_ids = inputs["input_ids"].to(device)
     attention_mask = inputs["attention_mask"].to(device)
 
@@ -70,7 +70,7 @@ def generate_structured_data(text):
     generated_tokens = outputs.sequences[0]
     result = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
-    # Ищем JSON в ответе
+    # ищем JSON в ответе
     json_objects = re.findall(r'{[\s\S]*?}', result)
     for json_candidate in reversed(json_objects):
         try:
@@ -92,7 +92,7 @@ def ocr_pdf_with_pymupdf(pdf_bytes):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     full_text = []
     for page in doc:
-        pix = page.get_pixmap(dpi=300, colorspace=fitz.csRGB)  # явный RGB
+        pix = page.get_pixmap(dpi=300, colorspace=fitz.csRGB)
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         text = pytesseract.image_to_string(img, lang='rus')
         full_text.append(text)
